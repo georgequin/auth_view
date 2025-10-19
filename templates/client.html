@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>📡 Web Stream Client</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #f3f3f3;
+      color: #333;
+      margin: 0;
+      padding: 20px;
+    }
+    h2 { color: #4CAF50; }
+    input, button {
+      padding: 10px;
+      font-size: 1rem;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      width: 80%;
+      max-width: 400px;
+      margin-bottom: 10px;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      cursor: pointer;
+      border: none;
+    }
+    button:hover { background-color: #45a049; }
+    #status { margin: 10px; font-size: 0.9rem; color: gray; }
+    video {
+      border: 3px solid #4CAF50;
+      border-radius: 10px;
+      width: 320px;
+      height: 240px;
+      background: black;
+    }
+  </style>
+</head>
+<body>
+  <h2>📸 Web Camera Stream Client</h2>
+
+  <div>
+    <input type="text" id="serverUrl" placeholder="Enter Server URL (e.g. http://192.168.0.105:5000)" />
+    <button id="startBtn">Start Streaming</button>
+  </div>
+
+  <p id="status">Enter your server URL to start streaming.</p>
+  <video id="video" autoplay playsinline></video>
+
+  <script>
+    const video = document.getElementById('video');
+    const startBtn = document.getElementById('startBtn');
+    const statusEl = document.getElementById('status');
+    const serverInput = document.getElementById('serverUrl');
+
+    // 🔹 Load stored server URL + client ID from localStorage
+    const savedUrl = localStorage.getItem('serverUrl');
+    if (savedUrl) serverInput.value = savedUrl;
+
+    let clientId = localStorage.getItem('clientId');
+    if (!clientId) {
+      clientId = "WEB_" + Math.random().toString(36).substring(2, 10).toUpperCase();
+      localStorage.setItem('clientId', clientId);
+    }
+
+    let streaming = false;
+
+    async function startStreaming() {
+      const serverUrl = serverInput.value.trim();
+      if (!serverUrl) {
+        alert("Please enter the server URL!");
+        return;
+      }
+
+      localStorage.setItem('serverUrl', serverUrl);
+      statusEl.textContent = "Connecting to server...";
+
+      try {
+        const res = await fetch(`${serverUrl}/test`);
+        if (!res.ok) throw new Error("Server not reachable");
+        const data = await res.json();
+        statusEl.textContent = `✅ Connected (${data.status})`;
+      } catch (e) {
+        statusEl.textContent = "❌ Could not reach server";
+        console.error(e);
+        return;
+      }
+
+      // Access camera
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+        statusEl.textContent = `🎥 Streaming as ${clientId}`;
+        streaming = true;
+        startBtn.textContent = "Stop Streaming";
+        startBtn.style.backgroundColor = "#f44336";
+        sendFrames(serverUrl, stream);
+      } catch (err) {
+        console.error(err);
+        alert("Camera access denied or not available.");
+      }
+    }
+
+    function stopStreaming() {
+      streaming = false;
+      if (video.srcObject) {
+        video.srcObject.getTracks().forEach(t => t.stop());
+      }
+      startBtn.textContent = "Start Streaming";
+      startBtn.style.backgroundColor = "#4CAF50";
+      statusEl.textContent = "Stream stopped.";
+    }
+
+    async function sendFrames(serverUrl, stream) {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const videoTrack = stream.getVideoTracks()[0];
+      const settings = videoTrack.getSettings();
+
+      const width = settings.width || 320;
+      const height = settings.height || 240;
+      canvas.width = width;
+      canvas.height = height;
+
+      while (streaming) {
+        ctx.drawImage(video, 0, 0, width, height);
+        const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.7));
+
+        const formData = new FormData();
+        formData.append("image", blob, "frame.jpg");
+
+        try {
+          await fetch(`${serverUrl}/upload`, {
+            method: "POST",
+            headers: { "X-Client-ID": clientId },
+            body: formData
+          });
+        } catch (e) {
+          console.warn("Frame upload failed:", e);
+        }
+
+        await new Promise(r => setTimeout(r, 500)); // send every 0.5s
+      }
+    }
+
+    startBtn.addEventListener('click', () => {
+      if (streaming) stopStreaming();
+      else startStreaming();
+    });
+  </script>
+</body>
+</html>

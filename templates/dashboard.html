@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>🚀 Pro Stream & Video Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+    body {
+      background: #f4f7fa; /* Lighter, cleaner background */
+      font-family: 'Poppins', sans-serif;
+    }
+    /* --- Modern Card Styling --- */
+    .card {
+      background: white;
+      border-radius: 1.25rem; /* More rounded corners */
+      box-shadow: 0 15px 35px rgba(0,0,0,0.08); /* Deeper, softer shadow */
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+      border: 1px solid #e5e7eb; /* Subtle border */
+    }
+    .card:hover {
+      box-shadow: 0 20px 45px rgba(0,0,0,0.1);
+      transform: translateY(-2px);
+    }
+
+    /* --- Live Status Indicator --- */
+    .recording-dot {
+      width: 12px; height: 12px; border-radius: 50%;
+      background-color: #ef4444;
+      box-shadow: 0 0 10px 2px rgba(239, 68, 68, 0.7); /* More prominent glow */
+      animation: pulsate 1.5s infinite ease-out;
+      display: inline-block;
+      margin-right: 8px;
+    }
+    @keyframes pulsate {
+      0% { transform: scale(0.9); opacity: 0.9; }
+      50% { transform: scale(1.1); opacity: 1; }
+      100% { transform: scale(0.9); opacity: 0.9; }
+    }
+    .overlay {
+      position: absolute;
+      top: 15px; right: 15px; /* Moved to top-right for less intrusion */
+      background: rgba(239, 68, 68, 0.9); /* Opaque red background */
+      color: white;
+      padding: 8px 16px;
+      border-radius: 1.5rem; /* Pill shape */
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      display: none;
+      align-items: center;
+      z-index: 10;
+    }
+
+    /* --- Input Styles --- */
+    input[type="number"], input[type="text"] {
+      border: 1px solid #d1d5db;
+      background-color: #f9fafb;
+      transition: all 0.2s;
+    }
+    input:focus {
+      border-color: #4f46e5 !important;
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+    }
+
+    /* --- Button Styles --- */
+    button {
+      transition: all 0.2s;
+    }
+    .btn-primary {
+        background-color: #4f46e5;
+        box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);
+    }
+    .btn-primary:hover {
+        background-color: #4338ca;
+        box-shadow: 0 6px 20px rgba(79, 70, 229, 0.6);
+    }
+    /* Disabled state for buttons */
+    button:disabled, button:disabled:hover {
+        background-color: #a0aec0; /* A neutral gray for disabled */
+        cursor: not-allowed;
+        box-shadow: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between mb-8">
+      <h1 class="text-4xl font-extrabold text-gray-900 flex items-center gap-3">
+        ⚡ <span class="tracking-tight">Dashboard</span>
+      </h1>
+      </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div class="lg:col-span-2 card p-6 relative">
+        <div class="flex items-start justify-between mb-4">
+          <h2 class="text-xl font-semibold text-gray-800">Real-time Stream Preview</h2>
+          <div class="flex flex-col items-end gap-1">
+           <label class="text-xs font-medium text-gray-500 uppercase tracking-wider">Client ID</label>
+            <select id="clientId"
+              class="border rounded-lg px-3 py-1.5 text-sm font-medium w-40 bg-white">
+              <option value="">Loading...</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="relative bg-gray-900 rounded-xl overflow-hidden shadow-2xl">
+          <div id="recordingOverlay" class="overlay">
+            <span class="recording-dot"></span>
+            <span id="recordTimer" class="font-bold">0</span>s LIVE
+          </div>
+          <div class="aspect-video flex items-center justify-center text-gray-400 text-lg">
+             <img id="videoFeed" class="w-full select-none" src="" alt="Live video feed">
+          </div>
+        </div>
+
+        <div class="mt-6 flex flex-wrap gap-4 items-end justify-between">
+          <div class="flex gap-4">
+              <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Auto Stop (s)</label>
+                <input id="maxSeconds" type="number" value="120"
+                  class="border rounded-lg px-3 py-1.5 w-24 text-sm" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-500 mb-1">Server FPS</label>
+                <input id="fps" type="number" value="10"
+                  class="border rounded-lg px-3 py-1.5 w-20 text-sm" />
+              </div>
+          </div>
+          <div class="flex gap-3">
+              <button id="btnStart"
+                class="btn-primary text-white px-5 py-2.5 rounded-xl font-semibold shadow-lg hover:shadow-xl">
+                <span class="mr-1">▶</span> START RECORDING
+              </button>
+              <button id="btnStop"
+                class="bg-rose-500 hover:bg-rose-600 text-white px-5 py-2.5 rounded-xl font-semibold shadow-lg hover:shadow-xl">
+                <span class="mr-1">⏹</span> STOP
+              </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-8">
+        <div class="card p-6">
+          <h2 class="text-xl font-semibold text-gray-800 mb-4">Stream Metrics</h2>
+          <div class="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
+            <div class="col-span-1">Frames Rx: <span id="statFrames" class="font-bold text-indigo-600">0</span></div>
+            <div class="col-span-1">Client Conn: <span id="statClients" class="font-bold text-indigo-600">0</span></div>
+            <div class="col-span-2">Render FPS: <span id="statFps" class="font-bold text-indigo-600 text-lg">0</span></div>
+          </div>
+        </div>
+
+        <div class="card p-6">
+          <h2 class="text-xl font-semibold text-gray-800 mb-4">Server Health</h2>
+          <ul class="space-y-3 text-sm">
+            <li>Uptime: <span id="uptimeBadge" class="font-bold text-green-600">0s</span></li>
+            <li>Total Frames Processed: <span id="totalFrames" class="font-bold text-gray-700">0</span></li>
+            <li>Frames Stored: <span id="framesStored" class="font-bold text-gray-700">0</span></li>
+            <li>Avg Frame Size: <span id="avgFrame" class="font-bold text-gray-700">0</span> bytes</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mt-8 p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-semibold text-gray-800">Recorded Sessions History</h2>
+        <button id="btnReloadRecs"
+          class="text-sm bg-gray-700 text-white rounded-lg px-4 py-2 hover:bg-gray-600 shadow-md">
+          <span class="mr-1">🔄</span> Reload List
+        </button>
+      </div>
+      <div class="overflow-x-auto rounded-lg border border-gray-200">
+        <table class="min-w-full text-sm">
+          <thead class="bg-gray-50 text-gray-600 uppercase text-xs tracking-wider">
+            <tr>
+              <th class="px-4 py-3 text-left font-medium">Created</th>
+              <th class="px-4 py-3 text-left font-medium">Client</th>
+              <th class="px-4 py-3 text-left font-medium">Duration</th>
+              <th class="px-4 py-3 text-left font-medium">Resolution</th>
+              <th class="px-4 py-3 text-left font-medium">Frames @ FPS</th>
+              <th class="px-4 py-3 text-left font-medium">Action</th>
+            </tr>
+          </thead>
+          <tbody id="recTbody" class="divide-y divide-gray-100 text-gray-700">
+             <tr><td colspan="6" class="text-center py-6 text-gray-500 italic">No recordings found. Click 'Reload List'.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Utility
+    function qs(id){ return document.getElementById(id); }
+
+    let frameCountWindow = 0, lastTick = Date.now();
+    let recording = false, timerInterval = null, startTime = 0;
+
+    // Flag to track if the stream is currently active
+    let streamActive = false;
+
+    // --- Core Functions ---
+
+    // Function to update the Start button state
+    function updateStartButtonState(hasFeed) {
+        const btnStart = qs('btnStart');
+        streamActive = hasFeed;
+
+        if (!recording) {
+            btnStart.disabled = !hasFeed;
+            if (hasFeed) {
+                btnStart.classList.remove('opacity-50');
+                btnStart.classList.remove('bg-gray-400'); // Remove disabled style class if using specific Tailwind styles
+                btnStart.classList.add('btn-primary');
+            } else {
+                btnStart.classList.add('opacity-50');
+                btnStart.classList.remove('btn-primary');
+            }
+        }
+    }
+
+    // Fetch frame & stats
+    async function fetchLatestFrame(){
+      let hasFrame = false;
+      try {
+        const r = await fetch('/latest_frame');
+        const j = await r.json();
+        if(j.frame_data){
+          qs('videoFeed').src = 'data:image/jpeg;base64,' + j.frame_data;
+          frameCountWindow++;
+          qs('statFrames').textContent = j.frame_count ?? 0;
+          qs('statClients').textContent = j.connected_clients ?? 0;
+          hasFrame = true;
+        } else {
+            // No frame data received
+            qs('videoFeed').src = 'https://dummyimage.com/600x400/000/fff&text=NO+LIVE+FEED+RECEIVED';
+        }
+      } catch (error) {
+         console.error("Error fetching frame:", error);
+         // Treat fetch error as no frame data
+         qs('videoFeed').src = 'https://dummyimage.com/600x400/000/fff&text=CONNECTION+ERROR';
+      }
+
+      // IMPORTANT: Update button state after checking for frame data
+      updateStartButtonState(hasFrame);
+    }
+
+    async function fetchServerStats(){
+      try {
+        const r = await fetch('/stats');
+        const j = await r.json();
+        qs('totalFrames').textContent = (j.total_frames ?? 0).toLocaleString();
+        qs('framesStored').textContent = (j.frames_stored ?? 0).toLocaleString();
+        qs('avgFrame').textContent = Math.round(j.avg_frame_size ?? 0).toLocaleString();
+      } catch (error) {
+          console.error("Error fetching stats:", error);
+      }
+    }
+
+    function updateMetricsTick(){
+      const now = Date.now();
+      const dt = now - lastTick;
+
+      // Update FPS & Uptime every second
+      if(dt >= 1000){
+        qs('statFps').textContent = Math.round(1000 * frameCountWindow / dt);
+        frameCountWindow = 0; lastTick = now;
+        const uptime = Math.floor(performance.now()/1000);
+        qs('uptimeBadge').textContent = formatDuration(uptime);
+      }
+
+      // Update Recording Timer
+      if(recording){
+        const elapsed = Math.floor((Date.now()-startTime)/1000);
+        qs('recordTimer').textContent = elapsed;
+      }
+    }
+
+    function formatDuration(totalSeconds) {
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+
+        let parts = [];
+        if (hours > 0) parts.push(`${hours}h`);
+        if (minutes > 0 || hours > 0) parts.push(`${minutes}m`);
+        parts.push(`${seconds}s`);
+        return parts.join(' ');
+    }
+
+    // Load recordings
+    async function loadRecordings(){
+      try {
+        const r = await fetch('/recordings');
+        const {items=[]} = await r.json();
+        const tb = qs('recTbody'); tb.innerHTML = '';
+
+        if(items.length === 0) {
+             tb.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-gray-500 italic">No recordings found.</td></tr>';
+             return;
+        }
+
+        for(const it of items){
+          const tr = document.createElement('tr');
+          tr.classList.add('hover:bg-gray-50');
+          tr.innerHTML = `
+            <td class="px-4 py-3">${it.createdAt ?? 'N/A'}</td>
+            <td class="px-4 py-3 font-medium">${it.clientId ?? 'N/A'}</td>
+            <td class="px-4 py-3">${(it.durationSec ?? 0)}s</td>
+            <td class="px-4 py-3 text-xs font-mono">${it.width ?? 0}×${it.height ?? 0}</td>
+            <td class="px-4 py-3">${(it.frameCount ?? 0).toLocaleString()} @ ${it.fps ?? 0}</td>
+            <td class="px-4 py-3">
+              ${it.publicUrl ? `<a class="text-indigo-600 hover:text-indigo-800 font-semibold underline" href="${it.publicUrl}" target="_blank">View Video</a>` : '<span class="text-gray-400">Processing...</span>'}
+            </td>`;
+          tb.appendChild(tr);
+        }
+      } catch (error) {
+          console.error("Error loading recordings:", error);
+          qs('recTbody').innerHTML = '<tr><td colspan="6" class="text-center py-6 text-red-500">Failed to load recordings.</td></tr>';
+      }
+    }
+
+    // Start Recording
+    async function startRecording(){
+      if (!streamActive) {
+          alert("Cannot start recording: No live video feed received.");
+          return;
+      }
+
+      const clientId = qs('clientId').value || 'unknown';
+      const maxSeconds = parseInt(qs('maxSeconds').value || '120', 10);
+      const fps = parseInt(qs('fps').value || '10', 10);
+      try {
+        await fetch('/record/start', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({clientId, maxSeconds, fps})
+        });
+        recording = true;
+        startTime = Date.now();
+        qs('recordingOverlay').style.display = 'flex';
+
+        // Disable Start and Enable Stop
+        if(timerInterval) clearInterval(timerInterval);
+        timerInterval = setInterval(updateMetricsTick, 200);
+        qs('btnStart').disabled = true;
+        qs('btnStop').disabled = false;
+        qs('btnStart').classList.remove('btn-primary');
+        qs('btnStop').classList.remove('opacity-50');
+      } catch (error) {
+          console.error("Failed to start recording:", error);
+      }
+    }
+
+    // Stop Recording
+    async function stopRecording(){
+      const clientId = qs('clientId').value || 'unknown';
+      try {
+        await fetch('/record/stop', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({clientId})
+        });
+
+        recording = false;
+        clearInterval(timerInterval);
+        qs('recordTimer').textContent = 0;
+        qs('recordingOverlay').style.display = 'none';
+
+        // Enable Start (if stream is active) and Disable Stop
+        qs('btnStop').disabled = true;
+        updateStartButtonState(streamActive); // Re-check if stream is still active
+
+        await loadRecordings(); // Reload after stop
+      } catch (error) {
+          console.error("Failed to stop recording:", error);
+      }
+    }
+
+    // --- Initialization ---
+    function initializeDashboard() {
+        // Initial state for buttons
+        qs('btnStart').disabled = true; // Start disabled by default until feed is confirmed
+        qs('btnStop').disabled = true;
+
+        // Bind events
+        qs('btnStart').onclick = startRecording;
+        qs('btnStop').onclick = stopRecording;
+        qs('btnReloadRecs').onclick = loadRecordings;
+
+        // Fetch initial data and start loops
+        fetchLatestFrame(); // Fetch immediately and set initial button state
+        fetchServerStats();
+        loadClients();
+        loadRecordings();
+
+        setInterval(fetchLatestFrame, 100);
+        setInterval(fetchServerStats, 1000);
+        setInterval(loadClients, 5000);
+        timerInterval = setInterval(updateMetricsTick, 200);
+    }
+
+    async function loadClients() {
+  try {
+    const res = await fetch('/clients');
+    const { clients = [] } = await res.json();
+    const sel = qs('clientId');
+    sel.innerHTML = '';
+
+    if (clients.length === 0) {
+      const opt = document.createElement('option');
+      opt.text = 'No active clients';
+      opt.value = '';
+      sel.appendChild(opt);
+      return;
+    }
+
+    for (const id of clients) {
+      const opt = document.createElement('option');
+      opt.value = id;
+      opt.textContent = id;
+      sel.appendChild(opt);
+    }
+  } catch (err) {
+    console.error('Failed to load clients:', err);
+    const sel = qs('clientId');
+    sel.innerHTML = '<option value="">Error loading</option>';
+  }
+}
+
+    // The placeholder image is defined in the fetch function now
+    // qs('videoFeed').src = 'https://dummyimage.com/600x400/000/fff&text=NO+LIVE+FEED+RECEIVED';
+
+    window.onload = initializeDashboard;
+  </script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+# Core dependencies
+Flask==3.0.3
+Werkzeug>=3.0.0
+gunicorn==21.2.0
+
+# Image & video processing
+opencv-python==4.10.0.84
+
+# Optional advanced video recording (PyAV + FFmpeg)
+# Uncomment if your host supports FFmpeg (Render, Linode, EC2, etc.)
+# av==12.3.0
+
+# Firebase (for uploads, metadata)
+firebase-admin==6.6.0
+
+# Utilities
+numpy==1.26.4
+requests==2.32.3
+python-dotenv==1.0.1
+
+# (Optional) for async and threading stability
+eventlet==0.36.1
